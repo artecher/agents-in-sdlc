@@ -1,3 +1,7 @@
+/**
+ * Purpose:
+ * End-to-end coverage for game listing, filtering, pagination, and navigation.
+ */
 import { test, expect, type Response } from '@playwright/test';
 
 test.describe('Game Listing and Navigation', () => {
@@ -68,6 +72,38 @@ test.describe('Game Listing and Navigation', () => {
       await expect(page.getByTestId('publisher-filter')).toHaveValue('all');
       await expect(page.getByTestId('category-filter')).toHaveValue('all');
       await expect(page.getByTestId('games-grid')).toBeVisible();
+    });
+  });
+
+  test('should paginate game list and navigate between pages when available', async ({ page }) => {
+    await test.step('Navigate to homepage and verify pagination controls are visible', async () => {
+      await page.goto('/');
+      await expect(page.getByTestId('games-grid')).toBeVisible();
+      await expect(page.getByTestId('pagination-controls')).toBeVisible();
+      await expect(page.getByTestId('pagination-page-info')).toContainText('Page 1 of');
+    });
+
+    await test.step('Verify page size limit is applied on current page', async () => {
+      const visibleCards = page.getByTestId('game-card');
+      expect(await visibleCards.count()).toBeLessThanOrEqual(6);
+    });
+
+    await test.step('Move to next page when more than one page exists', async () => {
+      const pageInfoText = (await page.getByTestId('pagination-page-info').textContent()) ?? '';
+      const match = pageInfoText.match(/Page\s+(\d+)\s+of\s+(\d+)/i);
+      const totalPages = match ? Number(match[2]) : 1;
+
+      const nextButton = page.getByTestId('pagination-next');
+      const prevButton = page.getByTestId('pagination-prev');
+
+      if (totalPages > 1) {
+        await expect(nextButton).toBeEnabled();
+        await nextButton.click();
+        await expect(page.getByTestId('pagination-page-info')).toContainText('Page 2 of');
+        await expect(prevButton).toBeEnabled();
+      } else {
+        await expect(nextButton).toBeDisabled();
+      }
     });
   });
 
