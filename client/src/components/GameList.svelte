@@ -1,3 +1,7 @@
+<!--
+    Purpose:
+    Render game listing with publisher/category filters and client-side pagination.
+-->
 <script lang="ts">
     import GameCard from "./GameCard.svelte";
     import LoadingSkeleton from "./LoadingSkeleton.svelte";
@@ -25,6 +29,9 @@
     let selectedPublisher = $state("all");
     let selectedCategory = $state("all");
     let hasFetched = $state(false);
+    let currentPage = $state(1);
+
+    const PAGE_SIZE = 6;
 
     const getPublisherName = (game: Game): string | null => game.publisher?.name ?? game.publisher_name ?? null;
     const getCategoryName = (game: Game): string | null => game.category?.name ?? game.category_name ?? null;
@@ -89,6 +96,17 @@
         })
     );
 
+    let totalPages = $derived(Math.max(1, Math.ceil(filteredGames.length / PAGE_SIZE)));
+
+    let paginatedGames = $derived.by(() => {
+        const start = (currentPage - 1) * PAGE_SIZE;
+        const end = start + PAGE_SIZE;
+        return filteredGames.slice(start, end);
+    });
+
+    let canGoPrevious = $derived(currentPage > 1);
+    let canGoNext = $derived(currentPage < totalPages);
+
     const fetchGames = async () => {
         loading = true;
         error = null;
@@ -109,7 +127,34 @@
     const clearFilters = (): void => {
         selectedPublisher = "all";
         selectedCategory = "all";
+        currentPage = 1;
     };
+
+    const goToPreviousPage = (): void => {
+        if (canGoPrevious) {
+            currentPage -= 1;
+        }
+    };
+
+    const goToNextPage = (): void => {
+        if (canGoNext) {
+            currentPage += 1;
+        }
+    };
+
+    // Reset to first page whenever filter state changes.
+    $effect(() => {
+        selectedPublisher;
+        selectedCategory;
+        currentPage = 1;
+    });
+
+    // Keep current page within valid bounds when result count changes.
+    $effect(() => {
+        if (currentPage > totalPages) {
+            currentPage = totalPages;
+        }
+    });
 
     $effect(() => {
         if (!hasFetched) {
@@ -182,9 +227,35 @@
         <EmptyState message="No games match your current filters." />
     {:else}
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6" data-testid="games-grid">
-            {#each filteredGames as game (game.id)}
+            {#each paginatedGames as game (game.id)}
                 <GameCard {game} />
             {/each}
+        </div>
+
+        <div class="mt-6 flex items-center justify-between gap-4" data-testid="pagination-controls">
+            <button
+                type="button"
+                class="px-3 py-1.5 text-sm rounded-lg border border-slate-500 text-slate-100 hover:border-blue-400 hover:text-blue-300 transition-colors disabled:opacity-50 disabled:hover:border-slate-500 disabled:hover:text-slate-100 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                onclick={goToPreviousPage}
+                disabled={!canGoPrevious}
+                data-testid="pagination-prev"
+            >
+                Previous
+            </button>
+
+            <p class="text-sm text-slate-300" data-testid="pagination-page-info">
+                Page {currentPage} of {totalPages}
+            </p>
+
+            <button
+                type="button"
+                class="px-3 py-1.5 text-sm rounded-lg border border-slate-500 text-slate-100 hover:border-blue-400 hover:text-blue-300 transition-colors disabled:opacity-50 disabled:hover:border-slate-500 disabled:hover:text-slate-100 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                onclick={goToNextPage}
+                disabled={!canGoNext}
+                data-testid="pagination-next"
+            >
+                Next
+            </button>
         </div>
     {/if}
 </div>
