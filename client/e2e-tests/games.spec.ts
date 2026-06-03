@@ -24,6 +24,53 @@ test.describe('Game Listing and Navigation', () => {
     });
   });
 
+  test('should filter games by publisher and category and allow clearing filters', async ({ page }) => {
+    await test.step('Navigate to homepage and wait for filters to be visible', async () => {
+      await page.goto('/');
+      await expect(page.getByTestId('games-grid')).toBeVisible();
+      await expect(page.getByTestId('publisher-filter')).toBeVisible();
+      await expect(page.getByTestId('category-filter')).toBeVisible();
+    });
+
+    await test.step('Apply a publisher filter and verify filtered state appears', async () => {
+      const cards = page.getByTestId('game-card');
+      const initialCount = await cards.count();
+
+      const publisherFilter = page.getByTestId('publisher-filter');
+      const publisherOptions = publisherFilter.locator('option');
+      expect(await publisherOptions.count()).toBeGreaterThan(1);
+
+      const firstPublisherValue = await publisherOptions.nth(1).getAttribute('value');
+      await publisherFilter.selectOption(firstPublisherValue ?? 'all');
+      await expect(page.getByTestId('active-filter-summary')).toBeVisible();
+
+      const countAfterPublisherFilter = await cards.count();
+      expect(countAfterPublisherFilter).toBeLessThanOrEqual(initialCount);
+    });
+
+    await test.step('Apply a category filter and verify combined result does not grow', async () => {
+      const cards = page.getByTestId('game-card');
+      const countAfterPublisherFilter = await cards.count();
+
+      const categoryFilter = page.getByTestId('category-filter');
+      const categoryOptions = categoryFilter.locator('option');
+      expect(await categoryOptions.count()).toBeGreaterThan(1);
+
+      const firstCategoryValue = await categoryOptions.nth(1).getAttribute('value');
+      await categoryFilter.selectOption(firstCategoryValue ?? 'all');
+
+      const countAfterCombinedFilter = await cards.count();
+      expect(countAfterCombinedFilter).toBeLessThanOrEqual(countAfterPublisherFilter);
+    });
+
+    await test.step('Clear filters and verify filters reset to defaults', async () => {
+      await page.getByTestId('clear-filters-button').click();
+      await expect(page.getByTestId('publisher-filter')).toHaveValue('all');
+      await expect(page.getByTestId('category-filter')).toHaveValue('all');
+      await expect(page.getByTestId('games-grid')).toBeVisible();
+    });
+  });
+
   test('should navigate to correct game details page when clicking on a game', async ({ page }) => {
     let gameId: string | null;
     let gameTitle: string | null;

@@ -1,13 +1,22 @@
 <script lang="ts">
+    interface GameMeta {
+        id: number;
+        name: string;
+    }
+
     interface Game {
         id: number;
         title: string;
         description: string;
+        publisher?: GameMeta | null;
+        category?: GameMeta | null;
         publisher_name?: string;
         category_name?: string;
     }
 
     let { game }: { game: Game } = $props();
+    let publisherName = $derived(game.publisher?.name ?? game.publisher_name ?? null);
+    let categoryName = $derived(game.category?.name ?? game.category_name ?? null);
 </script>
 
 <a 
@@ -22,16 +31,16 @@
         <div class="relative z-10">
             <h3 class="text-xl font-semibold text-slate-100 mb-2 group-hover:text-blue-400 transition-colors" data-testid="game-title">{game.title}</h3>
             
-            {#if game.category_name || game.publisher_name}
+            {#if categoryName || publisherName}
                 <div class="flex gap-2 mb-3">
-                    {#if game.category_name}
+                    {#if categoryName}
                         <span class="text-xs font-medium px-2.5 py-0.5 rounded bg-blue-900/60 text-blue-300" data-testid="game-category">
-                            {game.category_name}
+                            {categoryName}
                         </span>
                     {/if}
-                    {#if game.publisher_name}
+                    {#if publisherName}
                         <span class="text-xs font-medium px-2.5 py-0.5 rounded bg-purple-900/60 text-purple-300" data-testid="game-publisher">
-                            {game.publisher_name}
+                            {publisherName}
                         </span>
                     {/if}
                 </div>
